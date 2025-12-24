@@ -1,6 +1,6 @@
 /* src/index.js */
 
-const ALLOWED_ORIGIN = "*"; // depois troque para o domínio da loja
+const ALLOWED_ORIGIN = "*"; // domínio da NuvemShop
 
 async function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -31,6 +31,16 @@ export default {
 
       const url = new URL(request.url);
       const pathname = url.pathname;
+
+      // ============================
+      // GET /admin  → retorna painel HTML
+      // ============================
+      if (pathname === "/admin" && request.method === "GET") {
+        const html = await env.ASSETS.get("admin.html");
+        return new Response(html, {
+          headers: { "Content-Type": "text/html;charset=UTF-8" }
+        });
+      }
 
       // ============================
       // GET /api/previews?product_id=123

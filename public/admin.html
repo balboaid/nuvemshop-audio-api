@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Painel de Previews - DJ Vinyl Store</title>
+
+  <style>
+    body { font-family: Arial; background: #f3f3f3; padding: 20px; }
+    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    input, button { padding: 10px; margin: 6px 0; width: 100%; }
+    button { background: black; color: white; cursor: pointer; border: none; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    td, th { border: 1px solid #ddd; padding: 8px; }
+    th { background: #222; color: white; }
+  </style>
+</head>
+
+<body>
+  <h1>Painel de Previews</h1>
+
+  <div class="card">
+    <h2>Configuração</h2>
+    <input id="apiKey" type="text" placeholder="x-api-key" />
+    <input id="productId" type="text" placeholder="product_id" />
+    <button onclick="loadPreviews()">Carregar Previews</button>
+  </div>
+
+  <div class="card">
+    <h2>Criar Preview</h2>
+    <input id="newAudio" type="text" placeholder="audio_url" />
+    <input id="newTitle" type="text" placeholder="title" />
+    <input id="newTrack" type="number" placeholder="track_number" />
+    <button onclick="createPreview()">Criar</button>
+  </div>
+
+  <div class="card">
+    <h2>Lista de Previews</h2>
+    <table id="previewTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Áudio</th>
+          <th>Título</th>
+          <th>Track</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+<script>
+const BASE = window.location.origin;
+
+async function loadPreviews() {
+  const productId = document.getElementById("productId").value;
+  if (!productId) return alert("Digite o product_id");
+
+  const res = await fetch(`${BASE}/api/previews?product_id=${productId}`);
+  const data = await res.json();
+
+  const tbody = document.querySelector("#previewTable tbody");
+  tbody.innerHTML = "";
+
+  data.previews.forEach(p => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${p.id}</td>
+      <td>${p.audio_url}</td>
+      <td>${p.title || ""}</td>
+      <td>${p.track_number || ""}</td>
+      <td>
+        <button onclick="deletePreview(${p.id})">Excluir</button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+async function createPreview() {
+  const productId = document.getElementById("productId").value;
+  const apiKey = document.getElementById("apiKey").value;
+
+  const audio = document.getElementById("newAudio").value;
+  const title = document.getElementById("newTitle").value;
+  const track = document.getElementById("newTrack").value;
+
+  const body = {
+    product_id: productId,
+    audio_url: audio,
+    title,
+    track_number: track ? Number(track) : null
+  };
+
+  const res = await fetch(`${BASE}/api/previews`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (res.status !== 200) return alert("Erro ao criar");
+
+  alert("Criado com sucesso!");
+  loadPreviews();
+}
+
+async function deletePreview(id) {
+  const apiKey = document.getElementById("apiKey").value;
+
+  const res = await fetch(`${BASE}/api/previews/${id}`, {
+    method: "DELETE",
+    headers: {
+      "x-api-key": apiKey
+    }
+  });
+
+  if (res.status !== 200) return alert("Erro ao excluir");
+
+  alert("Removido!");
+  loadPreviews();
+}
+</script>
+
+</body>
+</html>
