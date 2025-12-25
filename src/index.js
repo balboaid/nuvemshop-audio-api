@@ -1,6 +1,8 @@
-/* src/index.js */
+// ========================================================================================
+//  CORS + JSON Response Helper
+// ========================================================================================
 
-const ALLOWED_ORIGIN = "*"; // domínio da NuvemShop
+const ALLOWED_ORIGIN = "*"; // Depois troque pelo domínio da Nuvemshop
 
 async function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -14,10 +16,16 @@ async function jsonResponse(body, status = 200) {
   });
 }
 
+// ========================================================================================
+//  WORKER ENTRYPOINT
+// ========================================================================================
+
 export default {
   async fetch(request, env) {
     try {
-      // Handle CORS preflight
+      // ------------------------------------------------------
+      //  CORS PREFLIGHT (OPTIONS)
+      // ------------------------------------------------------
       if (request.method === "OPTIONS") {
         return new Response(null, {
           status: 204,
@@ -32,149 +40,123 @@ export default {
       const url = new URL(request.url);
       const pathname = url.pathname;
 
-      // ============================
-      // GET /admin  → retorna painel HTML
-      // ============================
-      if (pathname === "/admin" && request.method === "GET") {
-        const html = await env.ASSETS.get("admin.html");
-        return new Response(html, {
-          headers: { "Content-Type": "text/html;charset=UTF-8" }
-        });
-      }
+      // ====================================================================================
+      //  GET PREVIEWS - REST STYLE (/api/previews/:product_id)
+      // ====================================================================================
+      if (pathname.startsWith("/api/previews/") && request.method === "GET") {
+        const productId = pathname.split("/").pop();
 
-      // ============================
-      // GET /api/previews?product_id=123
-      // ============================
-      if (pathname === "/api/previews" && request.method === "GET") {
-        const product_id = url.searchParams.get("product_id");
-
-        if (!product_id) {
-          return jsonResponse({ error: "missing product_id" }, 400);
+        if (!productId) {
+          return jsonResponse({ error: "Product ID is required" }, 400);
         }
 
-        const query = await env.previews_db
-          .prepare(
-            "SELECT id, product_id, audio_url, title, track_number, created_at FROM product_previews WHERE product_id = ? ORDER BY track_number ASC, id ASC"
-          )
-          .bind(product_id)
-          .all();
+        const stmt = env.previews_db.prepare(
+          "SELECT * FROM product_previews WHERE product_id = ? ORDER BY track_number ASC"
+        );
+        const result = await stmt.bind(productId).all();
 
-        return jsonResponse({ previews: query.results || [] });
+        return jsonResponse(result.results);
       }
 
-      // ============================
-      // POST /api/previews
-      // ============================
+      // ====================================================================================
+      //  GET PREVIEWS (legacy) /api/previews?product_id=xxxx
+      // ====================================================================================
+      if (pathname === "/api/previews" && request.method === "GET") {
+        const productId = url.searchParams.get("product_id");
+
+        if (!productId) {
+          return jsonResponse({ error: "product_id is required" }, 400);
+        }
+
+        const stmt = env.previews_db.prepare(
+          "SELECT * FROM product_previews WHERE product_id = ? ORDER BY track_number ASC"
+        );
+        const result = await stmt.bind(productId).all();
+
+        return jsonResponse(result.results);
+      }
+
+      // ====================================================================================
+      //  CREATE PREVIEW - POST /api/previews
+      // ====================================================================================
       if (pathname === "/api/previews" && request.method === "POST") {
         const apiKey = request.headers.get("x-api-key");
-        if (!apiKey || apiKey !== env.PREVIEW_API_KEY) {
-          return jsonResponse({ error: "unauthorized" }, 401);
+
+        if (apiKey !== env.PREVIEW_API_KEY) {
+          return jsonResponse({ error: "Unauthorized" }, 401);
         }
 
-        let payload;
-        try {
-          payload = await request.json();
-        } catch {
-          return jsonResponse({ error: "invalid json" }, 400);
+        const body = await request.json();
+        const { product_id, title, audio_url, track_number } = body;
+
+        if (!product_id || !title || !audio_url) {
+          return jsonResponse({
+            error: "product_id, title and audio_url are required"
+          }, 400);
         }
 
-        const { product_id, audio_url, title = null, track_number = null } = payload;
+        await env.previews_db.prepare(
+          "INSERT INTO product_previews (product_id, title, audio_url, track_number) VALUES (?, ?, ?, ?)"
+        )
+        .bind(product_id, title, audio_url, track_number || 1)
+        .run();
 
-        if (!product_id || !audio_url) {
-          return jsonResponse({ error: "product_id and audio_url required" }, 400);
-        }
-
-        const result = await env.previews_db
-          .prepare(
-            "INSERT INTO product_previews (product_id, audio_url, title, track_number) VALUES (?, ?, ?, ?)"
-          )
-          .bind(product_id, audio_url, title, track_number)
-          .run();
-
-        return jsonResponse({
-          success: true,
-          insertedId: result.lastRowId || null
-        });
+        return jsonResponse({ success: true, message: "Preview created" });
       }
 
-      // ============================
-      // PUT /api/previews/:id
-      // ============================
+      // ====================================================================================
+      //  UPDATE PREVIEW - PUT /api/previews/:id
+      // ====================================================================================
       if (pathname.startsWith("/api/previews/") && request.method === "PUT") {
         const apiKey = request.headers.get("x-api-key");
-        if (!apiKey || apiKey !== env.PREVIEW_API_KEY) {
-          return jsonResponse({ error: "unauthorized" }, 401);
+
+        if (apiKey !== env.PREVIEW_API_KEY) {
+          return jsonResponse({ error: "Unauthorized" }, 401);
         }
 
         const id = pathname.split("/").pop();
+        const { title, audio_url, track_number } = await request.json();
 
-        let payload;
-        try {
-          payload = await request.json();
-        } catch {
-          return jsonResponse({ error: "invalid json" }, 400);
-        }
+        await env.previews_db.prepare(
+          "UPDATE product_previews SET title = ?, audio_url = ?, track_number = ? WHERE id = ?"
+        )
+        .bind(title, audio_url, track_number || 1, id)
+        .run();
 
-        const { audio_url, title, track_number } = payload;
-
-        const fields = [];
-        const values = [];
-
-        if (audio_url !== undefined) {
-          fields.push("audio_url = ?");
-          values.push(audio_url);
-        }
-        if (title !== undefined) {
-          fields.push("title = ?");
-          values.push(title);
-        }
-        if (track_number !== undefined) {
-          fields.push("track_number = ?");
-          values.push(track_number);
-        }
-
-        if (fields.length === 0) {
-          return jsonResponse({ error: "no fields to update" }, 400);
-        }
-
-        values.push(id);
-
-        const sql = `UPDATE product_previews SET ${fields.join(", ")} WHERE id = ?`;
-
-        const result = await env.previews_db.prepare(sql).bind(...values).run();
-
-        return jsonResponse({
-          success: true,
-          updated: result.changes
-        });
+        return jsonResponse({ success: true, message: "Preview updated" });
       }
 
-      // ============================
-      // DELETE /api/previews/:id
-      // ============================
+      // ====================================================================================
+      //  DELETE PREVIEW - DELETE /api/previews/:id
+      // ====================================================================================
       if (pathname.startsWith("/api/previews/") && request.method === "DELETE") {
         const apiKey = request.headers.get("x-api-key");
-        if (!apiKey || apiKey !== env.PREVIEW_API_KEY) {
-          return jsonResponse({ error: "unauthorized" }, 401);
+
+        if (apiKey !== env.PREVIEW_API_KEY) {
+          return jsonResponse({ error: "Unauthorized" }, 401);
         }
 
         const id = pathname.split("/").pop();
 
-        const result = await env.previews_db
-          .prepare("DELETE FROM product_previews WHERE id = ?")
-          .bind(id)
-          .run();
+        await env.previews_db.prepare(
+          "DELETE FROM product_previews WHERE id = ?"
+        )
+        .bind(id)
+        .run();
 
-        return jsonResponse({
-          success: true,
-          deleted: result.changes
-        });
+        return jsonResponse({ success: true, message: "Preview deleted" });
       }
 
-      // rota não encontrada
-      return new Response("Not Found", { status: 404 });
-    } catch (err) {
-      return jsonResponse({ error: err.message }, 500);
+      // ====================================================================================
+      //  NOT FOUND
+      // ====================================================================================
+      return jsonResponse({ error: "Not Found" }, 404);
+
+    } catch (error) {
+      return jsonResponse(
+        { error: error.message, stack: error.stack },
+        500
+      );
     }
   }
 };
