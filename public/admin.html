@@ -60,10 +60,13 @@ async function loadPreviews() {
   const res = await fetch(`${BASE}/api/previews?product_id=${productId}`);
   const data = await res.json();
 
+  console.log("Retorno da API:", data);
+
   const tbody = document.querySelector("#previewTable tbody");
   tbody.innerHTML = "";
 
-  data.previews.forEach(p => {
+  // ❗ Ajuste principal: data é um array, não objeto {previews:[]}
+  data.forEach(p => {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${p.id}</td>
@@ -102,7 +105,11 @@ async function createPreview() {
     body: JSON.stringify(body)
   });
 
-  if (res.status !== 200) return alert("Erro ao criar");
+  if (!res.ok) {
+    const txt = await res.text();
+    alert("Erro ao criar: " + txt);
+  return;
+}
 
   alert("Criado com sucesso!");
   loadPreviews();
