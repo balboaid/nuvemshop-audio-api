@@ -1,41 +1,37 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Painel de Previews - DJ Vinyl Store</title>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Antonio:wght@100..700&family=Roboto+Slab:wght@100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Painel de Previews - DJ Vinyl Store</title>
+    <style>
+      body { font-family: "Roboto", sans-serif; background: #f3f3f3; padding: 20px; }
+      .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgb(0 0 0 / 0.1); }
+      input { padding: 10px; margin: 6px 0; width: 100%; box-sizing: border-box; border: 1px solid #858585; border-radius: 4px; }
+      button { background: black; color: white; border-radius: 4px; font-weight: 700; cursor: pointer; border: none; padding: 10px 30px; margin: 6px 0; }
+      table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+      td, th { border: 1px solid #ddd; padding: 8px; }
+      th { background: #adadad; color: white; font-size: 12px; font-weight: 400; }
+      h3 { font-weight: 500; margin-bottom: 5px; }
+    </style>
+  </head>
 
-  <style>
-    body { font-family: Arial; background: #f3f3f3; padding: 20px; }
-    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-    input, button { padding: 10px; margin: 6px 0; width: 100%; }
-    button { background: black; color: white; cursor: pointer; border: none; }
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-    td, th { border: 1px solid #ddd; padding: 8px; }
-    th { background: #222; color: white; }
-  </style>
-</head>
-
-<body>
+  <body>
   <h1>Painel de Previews</h1>
+  <h2>DJ Vinyl Store</h2>
 
   <div class="card">
-    <h2>Configuração</h2>
-    <input id="apiKey" type="text" placeholder="x-api-key" />
-    <input id="productId" type="text" placeholder="product_id" />
+    <h3>Configuração</h3>
+    <input id="apiKey" type="password" placeholder="Digite a Senha do Sistema DJ Vinyl Store (X-API-Key)" />
+    <input id="productId" type="text" placeholder="Cole aqui a PRODUCT_ID referente à música no Catálogo" />
     <button onclick="loadPreviews()">Carregar Previews</button>
   </div>
 
   <div class="card">
-    <h2>Criar Preview</h2>
-    <input id="newAudio" type="text" placeholder="audio_url" />
-    <input id="newTitle" type="text" placeholder="title" />
-    <input id="newTrack" type="number" placeholder="track_number" />
-    <button onclick="createPreview()">Criar</button>
-  </div>
-
-  <div class="card">
-    <h2>Lista de Previews</h2>
+    <h3>Lista de Previews</h3>
     <table id="previewTable">
       <thead>
         <tr>
@@ -50,7 +46,15 @@
     </table>
   </div>
 
-<script>
+  <div class="card">
+    <h3>Criar Preview</h3>
+    <input id="newAudio" type="text" placeholder="Link (URL) da MP3 (cole aqui)" />
+    <input id="newTitle" type="text" placeholder="Título da Track" />
+    <input id="newTrack" type="number" placeholder="Número da Track" />
+    <button onclick="createPreview()">Criar</button>
+  </div>
+
+    <script>
 const BASE = window.location.origin;
 
 async function loadPreviews() {
@@ -78,7 +82,7 @@ async function loadPreviews() {
       </td>
     `;
     tbody.appendChild(row);
-  });
+        });
 }
 
 async function createPreview() {
@@ -97,7 +101,7 @@ async function createPreview() {
   };
 
   const res = await fetch(`${BASE}/api/previews`, {
-    method: "POST",
+          method: "POST",
     headers: {
       "Content-Type": "application/json",
       "x-api-key": apiKey
@@ -130,7 +134,12 @@ async function deletePreview(id) {
   alert("Removido!");
   loadPreviews();
 }
-</script>
+    </script>
 
-</body>
+    <div>
+      <hr />
+      <p style="font-size: x-small;">&copy; 2025/2026 Desenvolvido por <a href="https://amodisco30.lojavirtualnuvem.com.br/" target="_blank" style="color: black">DJ Vinyl Store</a> e <a href="https://miguelnwafor.com.br" target="_blank" style="color: black">Miguel Fredman Nwafor (Dev)</a></p>
+    </div>
+
+  </body>
 </html>
