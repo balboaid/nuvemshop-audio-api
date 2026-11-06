@@ -2,7 +2,7 @@
 //  CORS + JSON Response Helper
 // ========================================================================================
 
-const ALLOWED_ORIGIN = "*"; // Depois troque pelo domínio da Nuvemshop
+const ALLOWED_ORIGIN = "*"; // Later change to the Nuvemshop domain
 
 async function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
